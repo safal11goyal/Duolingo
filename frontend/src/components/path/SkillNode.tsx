@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Check, Crown, Lock, Star, Play, Sparkles, X } from "lucide-react";
 import { SkillSummary } from "@/lib/types";
@@ -12,6 +13,11 @@ interface SkillNodeProps {
 
 export const SkillNode: React.FC<SkillNodeProps> = ({ skill, index }) => {
   const [showPopup, setShowPopup] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Snake curve offset calculation
   // Pattern: 0 -> 0, 1 -> 45px right, 2 -> 0, 3 -> -45px left
@@ -84,10 +90,16 @@ export const SkillNode: React.FC<SkillNodeProps> = ({ skill, index }) => {
         {skill.title}
       </span>
 
-      {/* Popup Dialog on click */}
-      {showPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 animate-pop">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border-2 border-neutral-200 relative text-center">
+      {/* Popup Dialog on click rendered via portal to prevent CSS transform trap */}
+      {showPopup && mounted && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-pop"
+          onClick={() => setShowPopup(false)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border-2 border-neutral-200 relative text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => setShowPopup(false)}
               className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-neutral-700 rounded-full hover:bg-neutral-100 transition-colors"
@@ -97,7 +109,7 @@ export const SkillNode: React.FC<SkillNodeProps> = ({ skill, index }) => {
 
             <div className="flex justify-center mb-3">
               <div
-                className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                className={`w-16 h-16 rounded-full flex items-center justify-center shadow-sm ${
                   isLocked
                     ? "bg-neutral-200 text-neutral-500"
                     : isCompleted
@@ -110,24 +122,24 @@ export const SkillNode: React.FC<SkillNodeProps> = ({ skill, index }) => {
                 ) : isCompleted ? (
                   <Crown className="w-8 h-8 fill-white" />
                 ) : (
-                  <Star className="w-8 h-8 fill-white" />
+                  <Star className="w-9 h-9 fill-white" />
                 )}
               </div>
             </div>
 
-            <h3 className="text-xl font-black text-neutral-800 mb-1">{skill.title}</h3>
-            <p className="text-xs text-neutral-500 mb-4">{skill.description}</p>
+            <h3 className="text-2xl font-black text-neutral-800 mb-1">{skill.title}</h3>
+            <p className="text-xs font-semibold text-neutral-500 mb-5 px-2">{skill.description}</p>
 
             {/* Progress indicators */}
-            <div className="bg-neutral-50 rounded-2xl p-3 mb-5 border border-neutral-100 flex items-center justify-around text-xs font-bold text-neutral-600">
-              <div>
-                <span className="block text-neutral-400 uppercase text-[10px]">Crowns</span>
-                <span className="text-base font-black text-[#ffc800]">{skill.crown_level}</span>
+            <div className="bg-neutral-50 rounded-2xl p-3 mb-6 border border-neutral-100 flex items-center justify-around text-xs font-bold text-neutral-600">
+              <div className="flex-1 text-center">
+                <span className="block text-neutral-400 uppercase text-[10px] tracking-wider mb-0.5">Crowns</span>
+                <span className="text-lg font-black text-[#ffc800]">{skill.crown_level}</span>
               </div>
-              <div className="h-6 w-px bg-neutral-200" />
-              <div>
-                <span className="block text-neutral-400 uppercase text-[10px]">Lessons</span>
-                <span className="text-base font-black text-[#58cc02]">
+              <div className="h-7 w-px bg-neutral-200" />
+              <div className="flex-1 text-center">
+                <span className="block text-neutral-400 uppercase text-[10px] tracking-wider mb-0.5">Lessons</span>
+                <span className="text-lg font-black text-[#58cc02]">
                   {skill.completed_lessons} / {skill.total_lessons}
                 </span>
               </div>
@@ -141,16 +153,17 @@ export const SkillNode: React.FC<SkillNodeProps> = ({ skill, index }) => {
             ) : nextLesson ? (
               <Link
                 href={`/lesson/${nextLesson.id}`}
-                className="btn-3d btn-duo-green w-full py-3.5 text-sm flex items-center justify-center gap-2"
+                className="btn-3d btn-duo-green w-full py-4 text-base font-black flex items-center justify-center gap-2 tracking-wider"
               >
-                <Play className="w-4 h-4 fill-white" />
+                <Play className="w-5 h-5 fill-white" />
                 START +{nextLesson.xp_reward} XP
               </Link>
             ) : (
               <div className="text-sm font-bold text-neutral-400">No lessons available.</div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
