@@ -19,13 +19,22 @@ def get_lesson(lesson_id: int, user: User = Depends(get_current_user), db: Sessi
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found.")
 
+    if not lesson.skill:
+        raise HTTPException(status_code=404, detail="Lesson does not belong to a valid skill.")
+
+    if not lesson.skill.unit or not lesson.skill.unit.course:
+        raise HTTPException(status_code=404, detail="Skill does not belong to a valid course.")
+
+    if user.hearts <= 0:
+        raise HTTPException(status_code=400, detail="Out of hearts. Practice or refill to continue learning.")
+
     # Check if skill is locked
     progress = db.query(UserSkillProgress).filter(
         UserSkillProgress.user_id == user.id,
         UserSkillProgress.skill_id == lesson.skill_id
     ).first()
 
-    if progress and progress.status == "locked":
+    if not progress or progress.status == "locked":
         raise HTTPException(status_code=403, detail="Skill is locked. Complete previous skills first.")
 
     # Sanitize exercises (hide correct answers & solutions)

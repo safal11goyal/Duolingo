@@ -1,34 +1,19 @@
 import json
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from .database import engine, SessionLocal, Base
+from .auth.security import hash_password
 from .models import (
     User, Course, Unit, Skill, Lesson, Exercise, ExerciseOption,
     UserSkillProgress, DailyActivity, Achievement, UserAchievement, LessonAttempt
 )
 
 def seed_database():
-    print("Initializing database tables...")
+    print("Recreating database tables with updated authentication schema...")
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
     try:
-        # Check if already seeded
-        existing_course = db.query(Course).first()
-        if existing_course:
-            print("Database already contains data. Clearing existing records for clean seeding...")
-            db.query(ExerciseOption).delete()
-            db.query(Exercise).delete()
-            db.query(LessonAttempt).delete()
-            db.query(Lesson).delete()
-            db.query(UserSkillProgress).delete()
-            db.query(Skill).delete()
-            db.query(Unit).delete()
-            db.query(Course).delete()
-            db.query(DailyActivity).delete()
-            db.query(UserAchievement).delete()
-            db.query(Achievement).delete()
-            db.query(User).delete()
-            db.commit()
 
         print("Seeding achievements...")
         achievements_data = [
@@ -90,18 +75,21 @@ def seed_database():
         db.commit()
 
         print("Seeding default learner & leaderboard users...")
+        default_pwd_hash = hash_password("Demo123!")
         users_data = [
-            {"username": "sofia_r", "display_name": "Sofia Ramos", "avatar": "/avatars/sofia.png", "xp": 1820, "gems": 1200, "hearts": 5, "streak": 14},
-            {"username": "daniel_k", "display_name": "Daniel Kim", "avatar": "/avatars/daniel.png", "xp": 1430, "gems": 850, "hearts": 4, "streak": 9},
-            {"username": "maria_g", "display_name": "Maria Garcia", "avatar": "/avatars/maria.png", "xp": 980, "gems": 620, "hearts": 5, "streak": 6},
-            {"username": "carlos_o", "display_name": "Carlos Ortiz", "avatar": "/avatars/carlos.png", "xp": 740, "gems": 450, "hearts": 3, "streak": 4},
-            {"username": "elena_r", "display_name": "Elena Rostova", "avatar": "/avatars/elena.png", "xp": 610, "gems": 390, "hearts": 5, "streak": 5},
-            {"username": "liam_s", "display_name": "Liam Smith", "avatar": "/avatars/liam.png", "xp": 430, "gems": 300, "hearts": 5, "streak": 2},
-            {"username": "chloe_d", "display_name": "Chloe Dupont", "avatar": "/avatars/chloe.png", "xp": 290, "gems": 200, "hearts": 2, "streak": 1},
+            {"username": "sofia_r", "email": "sofia@example.com", "display_name": "Sofia Ramos", "avatar": "/avatars/sofia.png", "xp": 1820, "gems": 1200, "hearts": 5, "streak": 14},
+            {"username": "daniel_k", "email": "daniel@example.com", "display_name": "Daniel Kim", "avatar": "/avatars/daniel.png", "xp": 1430, "gems": 850, "hearts": 4, "streak": 9},
+            {"username": "maria_g", "email": "maria@example.com", "display_name": "Maria Garcia", "avatar": "/avatars/maria.png", "xp": 980, "gems": 620, "hearts": 5, "streak": 6},
+            {"username": "carlos_o", "email": "carlos@example.com", "display_name": "Carlos Ortiz", "avatar": "/avatars/carlos.png", "xp": 740, "gems": 450, "hearts": 3, "streak": 4},
+            {"username": "elena_r", "email": "elena@example.com", "display_name": "Elena Rostova", "avatar": "/avatars/elena.png", "xp": 610, "gems": 390, "hearts": 5, "streak": 5},
+            {"username": "liam_s", "email": "liam@example.com", "display_name": "Liam Smith", "avatar": "/avatars/liam.png", "xp": 430, "gems": 300, "hearts": 5, "streak": 2},
+            {"username": "chloe_d", "email": "chloe@example.com", "display_name": "Chloe Dupont", "avatar": "/avatars/chloe.png", "xp": 290, "gems": 200, "hearts": 2, "streak": 1},
         ]
         for u in users_data:
             db.add(User(
                 username=u["username"],
+                email=u["email"],
+                password_hash=default_pwd_hash,
                 display_name=u["display_name"],
                 avatar=u["avatar"],
                 xp=u["xp"],
@@ -109,14 +97,16 @@ def seed_database():
                 hearts=u["hearts"],
                 streak=u["streak"],
                 daily_goal=20,
-                last_active_at=datetime.utcnow(),
-                created_at=datetime.utcnow() - timedelta(days=20),
-                updated_at=datetime.utcnow()
+                last_active_at=datetime.now(timezone.utc),
+                created_at=datetime.now(timezone.utc) - timedelta(days=20),
+                updated_at=datetime.now(timezone.utc)
             ))
 
-        # Main learner Alex
+        # Main demo learner Alex
         alex = User(
             username="alex",
+            email="demo@example.com",
+            password_hash=default_pwd_hash,
             display_name="Alex Rivera",
             avatar="/avatars/alex.png",
             xp=150,
@@ -124,9 +114,9 @@ def seed_database():
             hearts=5,
             streak=3,
             daily_goal=20,
-            last_active_at=datetime.utcnow(),
-            created_at=datetime.utcnow() - timedelta(days=10),
-            updated_at=datetime.utcnow()
+            last_active_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc) - timedelta(days=10),
+            updated_at=datetime.now(timezone.utc)
         )
         db.add(alex)
         db.commit()
@@ -1150,8 +1140,8 @@ def seed_database():
                     db.add(LessonAttempt(
                         user_id=alex.id,
                         lesson_id=l.id,
-                        started_at=datetime.utcnow() - timedelta(days=1),
-                        completed_at=datetime.utcnow() - timedelta(days=1),
+                        started_at=datetime.now(timezone.utc) - timedelta(days=1),
+                        completed_at=datetime.now(timezone.utc) - timedelta(days=1),
                         score=100,
                         correct_answers=6,
                         wrong_answers=0,
@@ -1185,15 +1175,15 @@ def seed_database():
         # Grant Alex "First Step", "Wildfire", and "Scholar" achievements
         first_step_ach = next((a for a in created_achievements if a.requirement_type == "first_lesson"), None)
         if first_step_ach:
-            db.add(UserAchievement(user_id=alex.id, achievement_id=first_step_ach.id, unlocked_at=datetime.utcnow() - timedelta(days=2)))
+            db.add(UserAchievement(user_id=alex.id, achievement_id=first_step_ach.id, unlocked_at=datetime.now(timezone.utc) - timedelta(days=2)))
 
         wildfire_ach = next((a for a in created_achievements if a.requirement_type == "streak"), None)
         if wildfire_ach:
-            db.add(UserAchievement(user_id=alex.id, achievement_id=wildfire_ach.id, unlocked_at=datetime.utcnow() - timedelta(days=1)))
+            db.add(UserAchievement(user_id=alex.id, achievement_id=wildfire_ach.id, unlocked_at=datetime.now(timezone.utc) - timedelta(days=1)))
 
         scholar_ach = next((a for a in created_achievements if a.requirement_type == "xp"), None)
         if scholar_ach:
-            db.add(UserAchievement(user_id=alex.id, achievement_id=scholar_ach.id, unlocked_at=datetime.utcnow() - timedelta(days=1)))
+            db.add(UserAchievement(user_id=alex.id, achievement_id=scholar_ach.id, unlocked_at=datetime.now(timezone.utc) - timedelta(days=1)))
 
         db.commit()
         print("Database seeded successfully with rich Spanish curriculum and initial progress!")

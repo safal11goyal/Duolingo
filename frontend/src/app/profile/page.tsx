@@ -18,8 +18,11 @@ import { fetchCurrentUser, fetchUserProfile, fetchAchievements, simulateActivity
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { TopHeader } from "@/components/layout/TopHeader";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ProfilePage() {
+  const { logout } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
@@ -97,8 +100,9 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white md:bg-[#f7f7f7] flex select-none">
-      <Sidebar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-white md:bg-[#f7f7f7] flex select-none">
+        <Sidebar />
 
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-8">
         <TopHeader user={user} onUserUpdate={loadData} />
@@ -127,6 +131,21 @@ export default function ProfilePage() {
                   <Trophy className="w-4 h-4 text-purple-600" />
                   {profile?.league || "Bronze"} League
                 </span>
+                {profile?.email && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-100 border border-neutral-200 text-neutral-600 font-bold text-xs">
+                    {profile.email}
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    if (confirm("Are you sure you want to log out?")) {
+                      logout();
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 border border-red-200 text-[#ff4b4b] hover:bg-red-100 font-black text-xs uppercase transition-colors"
+                >
+                  Log out
+                </button>
               </div>
             </div>
           </div>
@@ -267,7 +286,8 @@ export default function ProfilePage() {
         </main>
       </div>
 
-      <MobileNav />
-    </div>
+        <MobileNav />
+      </div>
+    </ProtectedRoute>
   );
 }

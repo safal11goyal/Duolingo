@@ -3,10 +3,12 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Trophy, User as UserIcon, Settings, Sparkles } from "lucide-react";
+import { Home, Trophy, User as UserIcon, Settings, Sparkles, LogOut } from "lucide-react";
 import { DuoMascot } from "../ui/DuoMascot";
+import { useAuth } from "@/context/AuthContext";
 
 export const Sidebar: React.FC = () => {
+  const { user, logout } = useAuth();
   const pathname = usePathname();
 
   const navItems = [
@@ -70,6 +72,37 @@ export const Sidebar: React.FC = () => {
           Active
         </button>
       </div>
+
+      {/* User Info & Logout Button */}
+      {user && (
+        <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-between">
+          <Link href="/profile" className="flex items-center gap-2.5 overflow-hidden group">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#58cc02] to-[#2ce308] border border-white shadow-sm flex items-center justify-center text-white font-black text-xs shrink-0 group-hover:scale-105 transition-transform">
+              {user.display_name ? user.display_name.charAt(0) : "A"}
+            </div>
+            <div className="overflow-hidden">
+              <span className="block font-black text-xs text-neutral-800 truncate group-hover:text-[#1cb0f6] transition-colors">
+                {user.display_name}
+              </span>
+              <span className="block text-[10px] font-bold text-neutral-400 truncate">
+                @{user.username}
+              </span>
+            </div>
+          </Link>
+          <button
+            onClick={() => {
+              if (confirm("Are you sure you want to log out?")) {
+                logout();
+              }
+            }}
+            title="Log out"
+            aria-label="Log out"
+            className="p-1.5 text-neutral-400 hover:text-[#ff4b4b] hover:bg-red-50 rounded-xl transition-colors shrink-0"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </aside>
   );
 };

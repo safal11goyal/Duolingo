@@ -1,7 +1,10 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from datetime import datetime, timezone
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from ..database import Base
+
+def utcnow():
+    return datetime.now(timezone.utc)
 
 class UserSkillProgress(Base):
     __tablename__ = "user_skill_progresses"
@@ -13,7 +16,11 @@ class UserSkillProgress(Base):
     xp = Column(Integer, nullable=False, default=0)
     crown_level = Column(Integer, nullable=False, default=0)
     completed_lessons = Column(Integer, nullable=False, default=0)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "skill_id", name="uq_user_skill"),
+    )
 
     user = relationship("User", back_populates="skill_progresses")
     skill = relationship("Skill", back_populates="user_progresses")
@@ -25,7 +32,7 @@ class LessonAttempt(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False, index=True)
-    started_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    started_at = Column(DateTime, default=utcnow, nullable=False)
     completed_at = Column(DateTime, nullable=True)
     score = Column(Integer, nullable=False, default=0)
     correct_answers = Column(Integer, nullable=False, default=0)

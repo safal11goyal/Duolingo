@@ -1,13 +1,19 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy.orm import Session
-from ..models import User, UserSkillProgress, LessonAttempt, DailyActivity, Course
+from ..models import User, UserSkillProgress, LessonAttempt, DailyActivity
+from ..auth.security import hash_password
+
+def utcnow():
+    return datetime.now(timezone.utc)
 
 def get_default_user(db: Session) -> User:
-    """Returns the default learner (Alex), creating one if not found."""
+    """Returns the demo learner (Alex), creating one with hashed password if not found."""
     user = db.query(User).filter(User.username == "alex").first()
     if not user:
         user = User(
             username="alex",
+            email="demo@example.com",
+            password_hash=hash_password("Demo123!"),
             display_name="Alex Rivera",
             avatar="/avatars/alex.png",
             xp=150,
@@ -15,9 +21,9 @@ def get_default_user(db: Session) -> User:
             hearts=5,
             streak=3,
             daily_goal=20,
-            last_active_at=datetime.utcnow(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            last_active_at=utcnow(),
+            created_at=utcnow(),
+            updated_at=utcnow()
         )
         db.add(user)
         db.commit()
@@ -32,8 +38,12 @@ def regenerate_hearts(user: User, db: Session) -> None:
     if user.hearts >= 5:
         return
     
-    now = datetime.utcnow()
+    now = utcnow()
+    # Normalize naive / aware datetimes if needed
     last_active = user.updated_at or user.last_active_at or now
+    if last_active.tzinfo is None:
+        last_active = last_active.replace(tzinfo=timezone.utc)
+    
     elapsed_minutes = (now - last_active).total_seconds() / 60.0
     
     # 1 heart per 30 minutes
@@ -49,7 +59,7 @@ def regenerate_hearts(user: User, db: Session) -> None:
 def refill_hearts(user: User, db: Session) -> User:
     """Refills hearts to full (5)."""
     user.hearts = 5
-    user.updated_at = datetime.utcnow()
+    user.updated_at = utcnow()
     db.commit()
     db.refresh(user)
     return user
@@ -57,13 +67,13 @@ def refill_hearts(user: User, db: Session) -> User:
 def practice_heart(user: User, db: Session) -> User:
     """Practice restores +1 heart up to 5."""
     user.hearts = min(5, user.hearts + 1)
-    user.updated_at = datetime.utcnow()
+    user.updated_at = utcnow()
     db.commit()
     db.refresh(user)
     return user
 
 def get_user_stats(user: User, db: Session) -> dict:
-    """Calculates all profile statistics for the user."""
+    """Calculates all profile statistics for the specific authenticated user."""
     # Today's daily activity
     today = date.today()
     activity = db.query(DailyActivity).filter(
@@ -74,19 +84,18 @@ def get_user_stats(user: User, db: Session) -> dict:
     daily_xp = activity.xp_earned if activity else 0
     daily_completed = daily_xp >= user.daily_goal
     
-    # Completed skills and crowns
+    # Completed skills and crowns for this specific user
     progresses = db.query(UserSkillProgress).filter(UserSkillProgress.user_id == user.id).all()
     completed_skills = sum(1 for p in progresses if p.status == "completed")
     crowns_count = sum(p.crown_level for p in progresses)
     
-    # Completed lessons
+    # Completed lessons for this specific user
     completed_lessons = db.query(LessonAttempt).filter(
         LessonAttempt.user_id == user.id,
         LessonAttempt.completed == True
     ).count()
     
-    # League ranking
-    # All users sorted by XP desc
+    # Global league ranking
     all_users = db.query(User).order_by(User.xp.desc()).all()
     rank = 1
     for idx, u in enumerate(all_users):

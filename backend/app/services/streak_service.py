@@ -1,4 +1,4 @@
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta, datetime, timezone
 from sqlalchemy.orm import Session
 from ..models import User, DailyActivity
 
@@ -48,8 +48,9 @@ def record_activity_and_update_streak(user: User, xp_gained: int, lesson_complet
         )
         db.add(today_activity)
 
-    user.last_active_at = datetime.utcnow()
-    user.updated_at = datetime.utcnow()
+    now = datetime.now(timezone.utc)
+    user.last_active_at = now
+    user.updated_at = now
     db.commit()
     db.refresh(user)
     return user.streak

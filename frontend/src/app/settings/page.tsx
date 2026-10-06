@@ -7,9 +7,12 @@ import { fetchCurrentUser, updateDailyGoal, resetProgress } from "@/lib/api";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { TopHeader } from "@/components/layout/TopHeader";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/context/AuthContext";
 import { sounds } from "@/lib/sound";
 
 export default function SettingsPage() {
+  const { logout } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [goal, setGoal] = useState(20);
@@ -64,8 +67,9 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white md:bg-[#f7f7f7] flex select-none">
-      <Sidebar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-white md:bg-[#f7f7f7] flex select-none">
+        <Sidebar />
 
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-8">
         <TopHeader user={user} />
@@ -160,6 +164,24 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* Account & Logout */}
+          <div className="bg-white border-2 border-neutral-200 rounded-3xl p-6 shadow-sm">
+            <h3 className="text-base font-black text-neutral-800 mb-1">Account</h3>
+            <p className="text-xs text-neutral-500 mb-4">
+              Signed in as <span className="font-extrabold text-neutral-700">{user?.email || user?.username}</span>
+            </p>
+            <button
+              onClick={() => {
+                if (confirm("Are you sure you want to log out?")) {
+                  logout();
+                }
+              }}
+              className="btn-3d btn-duo-gray py-2.5 px-6 text-xs text-red-600 border-red-200 hover:bg-red-50 uppercase font-black tracking-wide"
+            >
+              Log Out
+            </button>
+          </div>
+
           {/* Reset Danger Zone */}
           <div className="bg-red-50 border-2 border-red-200 rounded-3xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-2">
@@ -183,5 +205,6 @@ export default function SettingsPage() {
 
       <MobileNav />
     </div>
+    </ProtectedRoute>
   );
 }

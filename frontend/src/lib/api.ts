@@ -9,15 +9,39 @@ import {
   AnswerResponse,
   LessonCompleteResponse,
   LeaderboardEntry,
-  Achievement
+  Achievement,
+  AuthResponse
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const TOKEN_KEY = "duo_access_token";
+
+export function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setStoredToken(token: string | null): void {
+  if (typeof window === "undefined") return;
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+  }
+}
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = getStoredToken();
+  const authHeaders: Record<string, string> = {};
+  if (token) {
+    authHeaders["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${url}`, {
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders,
       ...(options?.headers || {})
     },
     ...options
@@ -33,10 +57,59 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     } catch {
       // ignore json parse error
     }
+    if (res.status === 401) {
+      setStoredToken(null);
+    }
     throw new Error(errMessage);
   }
 
   return res.json();
+}
+
+export async function apiRegister(body: {
+  username: string;
+  email: string;
+  password: string;
+  display_name: string;
+}): Promise<AuthResponse> {
+  const data = await fetchJson<AuthResponse>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+  if (data.access_token) {
+    setStoredToken(data.access_token);
+  }
+  return data;
+}
+
+export async function apiLogin(body: {
+  email: string;
+  password: string;
+}): Promise<AuthResponse> {
+  const data = await fetchJson<AuthResponse>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+  if (data.access_token) {
+    setStoredToken(data.access_token);
+  }
+  return data;
+}
+
+export async function apiLogout(): Promise<void> {
+  try {
+    await fetchJson("/api/auth/logout", {
+      method: "POST"
+    });
+  } catch {
+    // Ignore network error on logout
+  } finally {
+    setStoredToken(null);
+  }
+}
+
+export async function apiGetMe(): Promise<User> {
+  return fetchJson<User>("/api/auth/me");
 }
 
 export async function fetchCurrentUser(): Promise<User> {

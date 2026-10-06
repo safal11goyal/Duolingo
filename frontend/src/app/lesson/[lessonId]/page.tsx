@@ -14,6 +14,7 @@ import { TypeAnswer } from "@/components/lesson/TypeAnswer";
 import { FeedbackBar } from "@/components/lesson/FeedbackBar";
 import { OutOfHeartsModal } from "@/components/lesson/OutOfHeartsModal";
 import { LessonCompleteModal } from "@/components/lesson/LessonCompleteModal";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { sounds } from "@/lib/sound";
 
 export default function LessonPage() {
@@ -169,7 +170,8 @@ export default function LessonPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col justify-between pb-32">
+    <ProtectedRoute>
+      <div className="min-h-screen bg-white flex flex-col justify-between pb-32">
       {/* Top Header */}
       <LessonHeader
         currentIndex={currentIndex}
@@ -258,5 +260,6 @@ export default function LessonPage() {
       {/* Lesson Complete Screen */}
       {completeSummary && <LessonCompleteModal summary={completeSummary} />}
     </div>
+    </ProtectedRoute>
   );
 }

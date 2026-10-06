@@ -7,6 +7,7 @@ import { fetchCurrentUser, fetchLeaderboard } from "@/lib/api";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { TopHeader } from "@/components/layout/TopHeader";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 export default function LeaderboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -41,8 +42,9 @@ export default function LeaderboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white md:bg-[#f7f7f7] flex select-none">
-      <Sidebar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-white md:bg-[#f7f7f7] flex select-none">
+        <Sidebar />
 
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-8">
         <TopHeader user={user} onUserUpdate={loadData} />
@@ -140,7 +142,8 @@ export default function LeaderboardPage() {
         </main>
       </div>
 
-      <MobileNav />
-    </div>
+        <MobileNav />
+      </div>
+    </ProtectedRoute>
   );
 }

@@ -27,6 +27,8 @@ def db_session():
     # Seed minimal course structure
     user = User(
         username="test_user",
+        email="test@example.com",
+        password_hash="testhash123",
         display_name="Test User",
         avatar="/avatars/alex.png",
         xp=50,

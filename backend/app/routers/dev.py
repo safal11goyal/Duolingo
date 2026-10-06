@@ -63,4 +63,7 @@ def reset_progress(user: User = Depends(get_current_user), db: Session = Depends
     user.streak = 0
     db.commit()
     
+    from ..auth.service import init_user_skill_progress
+    init_user_skill_progress(user, db)
+    
     return {"message": "User progress has been reset for fresh testing."}

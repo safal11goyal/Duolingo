@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Flame, Gem, Heart, Plus, Sparkles, X } from "lucide-react";
+import { Flame, Gem, Heart, Plus, Sparkles, X, User as UserIcon, Settings, LogOut } from "lucide-react";
 import { User } from "@/lib/types";
 import { refillHearts, practiceHearts } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 interface TopHeaderProps {
   user: User | null;
@@ -12,8 +13,21 @@ interface TopHeaderProps {
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({ user, onUserUpdate }) => {
+  const { logout } = useAuth();
   const [showHeartsModal, setShowHeartsModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleRefill = async () => {
     setLoadingAction(true);
@@ -88,13 +102,65 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ user, onUserUpdate }) => {
             <span>{user?.hearts ?? 5}</span>
           </button>
 
-          {/* Profile Avatar */}
-          <Link
-            href="/profile"
-            className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#58cc02] to-[#2ce308] border-2 border-white shadow flex items-center justify-center text-white font-black text-sm hover:scale-105 transition-transform"
-          >
-            {user?.display_name ? user.display_name.charAt(0) : "A"}
-          </Link>
+          {/* Profile Avatar & Dropdown */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#58cc02] to-[#2ce308] border-2 border-white shadow flex items-center justify-center text-white font-black text-sm hover:scale-105 transition-transform cursor-pointer focus:outline-none"
+              title={user?.display_name || "Profile menu"}
+              aria-label="User menu"
+            >
+              {user?.display_name ? user.display_name.charAt(0) : "A"}
+            </button>
+
+            {showUserMenu && (
+              <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border-2 border-neutral-200 py-2 z-50 animate-pop">
+                <div className="px-4 py-2 border-b border-neutral-100">
+                  <p className="font-black text-sm text-neutral-800 truncate">
+                    {user?.display_name || "Learner"}
+                  </p>
+                  <p className="font-bold text-xs text-neutral-400 truncate">
+                    {user?.email || `@${user?.username || "user"}`}
+                  </p>
+                </div>
+
+                <div className="py-1">
+                  <Link
+                    href="/profile"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-black text-neutral-700 hover:bg-neutral-100 transition-colors"
+                  >
+                    <UserIcon className="w-4 h-4 text-[#1cb0f6]" />
+                    Profile
+                  </Link>
+
+                  <Link
+                    href="/settings"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-black text-neutral-700 hover:bg-neutral-100 transition-colors"
+                  >
+                    <Settings className="w-4 h-4 text-neutral-500" />
+                    Settings
+                  </Link>
+                </div>
+
+                <div className="border-t border-neutral-100 pt-1">
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      if (confirm("Are you sure you want to log out?")) {
+                        logout();
+                      }
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-black text-[#ff4b4b] hover:bg-red-50 transition-colors text-left"
+                  >
+                    <LogOut className="w-4 h-4 text-[#ff4b4b]" />
+                    Log Out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

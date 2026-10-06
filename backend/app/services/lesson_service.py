@@ -1,7 +1,7 @@
 import re
 import unicodedata
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -46,7 +46,7 @@ def start_lesson_attempt(user: User, lesson_id: int, db: Session) -> dict:
     attempt = LessonAttempt(
         user_id=user.id,
         lesson_id=lesson_id,
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
         score=0,
         correct_answers=0,
         wrong_answers=0,
@@ -165,8 +165,10 @@ def submit_exercise_answer(user: User, lesson_id: int, exercise_id: int, answer:
 
     # Track in attempt if attempt_id is provided
     if attempt_id:
-        attempt = db.query(LessonAttempt).filter(LessonAttempt.id == attempt_id, LessonAttempt.user_id == user.id).first()
+        attempt = db.query(LessonAttempt).filter(LessonAttempt.id == attempt_id).first()
         if attempt:
+            if attempt.user_id != user.id:
+                raise HTTPException(status_code=403, detail="Forbidden: You cannot modify another user's lesson attempt.")
             if is_correct:
                 attempt.correct_answers += 1
                 attempt.xp_earned += xp_earned
@@ -174,8 +176,8 @@ def submit_exercise_answer(user: User, lesson_id: int, exercise_id: int, answer:
                 attempt.wrong_answers += 1
                 attempt.hearts_lost += 1
 
-    user.last_active_at = datetime.utcnow()
-    user.updated_at = datetime.utcnow()
+    user.last_active_at = datetime.now(timezone.utc)
+    user.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(user)
 
@@ -201,10 +203,12 @@ def finish_lesson(user: User, lesson_id: int, attempt_id: int = None, db: Sessio
     attempt = None
     is_perfect = False
     if attempt_id:
-        attempt = db.query(LessonAttempt).filter(LessonAttempt.id == attempt_id, LessonAttempt.user_id == user.id).first()
+        attempt = db.query(LessonAttempt).filter(LessonAttempt.id == attempt_id).first()
         if attempt:
+            if attempt.user_id != user.id:
+                raise HTTPException(status_code=403, detail="Forbidden: You cannot complete another user's lesson attempt.")
             attempt.completed = True
-            attempt.completed_at = datetime.utcnow()
+            attempt.completed_at = datetime.now(timezone.utc)
             attempt.xp_earned += bonus_xp
             attempt.score = int((attempt.correct_answers / max(1, attempt.correct_answers + attempt.wrong_answers)) * 100)
             if attempt.wrong_answers == 0 and attempt.correct_answers > 0:

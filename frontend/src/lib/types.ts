@@ -1,6 +1,7 @@
 export interface User {
   id: number;
   username: string;
+  email?: string;
   display_name: string;
   avatar: string;
   xp: number;
@@ -11,6 +12,12 @@ export interface User {
   last_active_at: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
 }
 
 export interface UserProfile extends User {
