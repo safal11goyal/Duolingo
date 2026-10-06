@@ -1,7 +1,7 @@
 from ..database import Base
 from .user import User
 from .course import Course, Unit, Skill, Lesson, Exercise, ExerciseOption
-from .progress import UserSkillProgress, LessonAttempt
+from .progress import UserSkillProgress, LessonAttempt, UserAnswer
 from .gamification import DailyActivity, Achievement, UserAchievement
 
 __all__ = [
@@ -15,6 +15,7 @@ __all__ = [
     "ExerciseOption",
     "UserSkillProgress",
     "LessonAttempt",
+    "UserAnswer",
     "DailyActivity",
     "Achievement",
     "UserAchievement",

@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 import bcrypt
 import jwt
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-duolingo-jwt-key-2026-production")
+SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET_KEY") or "super-secret-duolingo-jwt-key-2026-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 

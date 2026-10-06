@@ -8,9 +8,10 @@ from ..auth.security import create_access_token
 from ..auth.dependencies import get_current_user
 from ..services.user_service import get_user_stats
 
-router = APIRouter(prefix="/api", tags=["Authentication & User"])
+router = APIRouter(tags=["Authentication & User"])
 
 @router.post("/auth/register", response_model=TokenResponse)
+@router.post("/register", response_model=TokenResponse)
 def register(body: UserRegister, response: Response, db: Session = Depends(get_db)):
     user = register_user(db, body)
     token = create_access_token({"sub": str(user.id)})
@@ -32,6 +33,7 @@ def register(body: UserRegister, response: Response, db: Session = Depends(get_d
     )
 
 @router.post("/auth/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse)
 def login(body: UserLogin, response: Response, db: Session = Depends(get_db)):
     user = authenticate_user(db, body)
     token = create_access_token({"sub": str(user.id)})
@@ -56,6 +58,7 @@ def auth_me(user: User = Depends(get_current_user)):
     return user
 
 @router.post("/auth/logout")
+@router.post("/logout")
 def logout(response: Response):
     response.delete_cookie(key="access_token")
     return {"message": "Logged out successfully"}

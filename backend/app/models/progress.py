@@ -40,6 +40,28 @@ class LessonAttempt(Base):
     xp_earned = Column(Integer, nullable=False, default=0)
     hearts_lost = Column(Integer, nullable=False, default=0)
     completed = Column(Boolean, nullable=False, default=False)
+    attempts = Column(Integer, nullable=False, default=1)
+    last_attempted_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
 
     user = relationship("User", back_populates="lesson_attempts")
     lesson = relationship("Lesson", back_populates="attempts")
+    answers = relationship("UserAnswer", back_populates="attempt", cascade="all, delete-orphan")
+
+
+class UserAnswer(Base):
+    __tablename__ = "user_answers"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    question_id = Column(Integer, ForeignKey("exercises.id"), nullable=False, index=True)
+    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=True, index=True)
+    attempt_id = Column(Integer, ForeignKey("lesson_attempts.id"), nullable=True, index=True)
+    submitted_answer = Column(String(500), nullable=False)
+    is_correct = Column(Boolean, nullable=False, default=False)
+    timestamp = Column(DateTime, default=utcnow, nullable=False)
+
+    user = relationship("User", back_populates="answers")
+    question = relationship("Exercise")
+    lesson = relationship("Lesson")
+    attempt = relationship("LessonAttempt", back_populates="answers")
+

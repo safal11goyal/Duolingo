@@ -305,28 +305,33 @@ Duolingo/
 
 ---
 
+---
+
 ## 🔌 API Reference
 
-### Authentication Endpoints
+### Core & Migration Endpoints
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Register new user, hash password, initialize fresh skill progression, return JWT |
-| `POST` | `/api/auth/login` | Authenticate email/password, return JWT and set HTTP-only cookie |
-| `GET` | `/api/auth/me` | Fetch authenticated user data from token (no passwords exposed) |
-| `POST` | `/api/auth/logout` | Clear session cookie and invalidate client state |
+| `POST` | `/register` or `/api/auth/register` | Register new user, hash password, initialize fresh skill progression, return JWT |
+| `POST` | `/login` or `/api/auth/login` | Authenticate email/password, return JWT and set HTTP-only cookie |
+| `POST` | `/logout` or `/api/auth/logout` | Clear session cookie and invalidate client state |
+| `GET` | `/me` or `/api/auth/me` | Safe authenticated user profile (password hash never exposed) |
+| `GET` | `/courses` or `/api/courses` | List all available language courses |
+| `GET` | `/lessons` or `/api/lessons` | List all lessons with order, XP reward, and exercise counts |
+| `GET` | `/questions` or `/api/questions` | List questions/exercises with options (optional `?lesson_id=...` filter) |
+| `GET` | `/progress` or `/api/progress` | Authenticated user's overall progress (XP, streak, lesson attempts, skills) |
+| `GET` | `/answers` or `/api/answers` | Authenticated user's answer submission history |
 
 ### User & Learning Path Endpoints
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/me` | Safe authenticated user profile summary |
 | `GET` | `/api/profile` | Detailed stats, crowns, streak, league, achievements |
 | `GET` | `/api/path` | Authenticated user's learning path with current unlocked/completed statuses |
-| `GET` | `/api/progress` | User's skill progress list |
 | `GET` | `/api/lessons/{id}` | Lesson detail (validates skill unlocked & user has hearts; answers hidden) |
-| `POST` | `/api/lessons/{id}/start` | Initialize lesson attempt belonging to current user |
-| `POST` | `/api/lessons/{id}/answer` | Validate answer, deduct hearts, award exercise XP on attempt |
+| `POST` | `/api/lessons/{id}/start` | Initialize lesson attempt belonging to current user (increments attempts) |
+| `POST` | `/api/lessons/{id}/answer` | Validate answer, deduct hearts, record `UserAnswer`, award exercise XP |
 | `POST` | `/api/lessons/{id}/complete` | Finalize attempt, award completion XP, update streak and unlock next skill |
 | `GET` | `/api/leaderboard` | Ranked user standings and league brackets |
 | `GET` | `/api/achievements` | Achievements list with authenticated user's unlock statuses |
@@ -337,46 +342,135 @@ Duolingo/
 
 ---
 
-## 🚀 Setup & Installation
+## 🗄️ Database Architecture & Migrations
 
-### Prerequisites
-- Python 3.10+
-- Node.js 18+ and npm
+The application uses **Supabase PostgreSQL** as its production database and **SQLAlchemy** as the ORM, with schema management powered by **Alembic**.
 
-### 1. Backend Setup
+### 1. Supabase PostgreSQL Configuration
+
+1. Log in to [Supabase](https://supabase.com) and create a new project (e.g. `duolingo-clone`).
+2. Go to **Project Settings** -> **Database** -> **Connection string**.
+3. Copy the **URI** (or **Transaction Pooler** URI for serverless/pooled environments):
+   ```text
+   postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres
+   ```
+4. Put this connection string in your `.env` file:
+   ```env
+   DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres
+   SECRET_KEY=your_jwt_secret_key_here
+   ```
+5. *(Fallback behavior)*: If `DATABASE_URL` is omitted, the application automatically falls back to local SQLite (`sqlite:///./duolingo.db`) for offline development or automated CI testing.
+
+### 2. Alembic Database Migrations
+
+Database tables are managed with versioned migrations:
 ```bash
 cd backend
 
-# Create and activate virtual environment
+# Apply migrations to the database configured in DATABASE_URL
+alembic upgrade head
+
+# Check current revision status
+alembic current
+```
+
+The initial migration `0001_initial_schema` creates all 13 required tables:
+- `users`
+- `courses`
+- `units`
+- `skills`
+- `lessons`
+- `exercises`
+- `exercise_options`
+- `user_skill_progress`
+- `lesson_attempts`
+- `user_answers`
+- `daily_activities`
+- `achievements`
+- `user_achievements`
+
+### 3. Idempotent Database Seeding
+
+To populate the database with courses, lessons, exercises, options, and achievements:
+```bash
+cd backend
+python -m app.seed
+```
+The seed script is **fully idempotent**: it can be run multiple times safely without creating duplicate courses, lessons, or exercises.
+
+---
+
+## 🚀 Local Setup Instructions
+
+Follow these step-by-step instructions to run locally with Supabase PostgreSQL:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/safal11goyal/Duolingo.git
+cd Duolingo
+
+# 2. Configure environment variables
+# Copy .env.example to .env
+cp .env.example .env
+# Edit .env and supply your Supabase connection string and SECRET_KEY:
+# DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
+# SECRET_KEY=generate_a_random_32_char_secret_key
+
+# 3. Setup Backend
+cd backend
 python -m venv venv
-
-# Windows:
+# On Windows:
 .\venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
+# On macOS/Linux:
+# source venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
 
-# Seed the database (creates demo@example.com account and Spanish course)
+# 4. Run Alembic migrations against Supabase
+alembic upgrade head
+
+# 5. Seed initial course curriculum & achievements
 python -m app.seed
 
-# Run FastAPI server
+# 6. Start FastAPI server
 uvicorn app.main:app --port 8000 --reload
-```
-API docs will be available at `http://localhost:8000/docs`.
 
-### 2. Frontend Setup
-```bash
-cd frontend
-
-# Install dependencies
+# 7. Start Next.js Frontend (in a separate terminal)
+cd ../frontend
 npm install
-
-# Run Next.js development server
 npm run dev
 ```
-Open `http://localhost:3000` in your browser.
+
+Visit:
+- **Frontend App**: `http://localhost:3000`
+- **FastAPI Interactive Docs**: `http://localhost:8000/docs`
+
+---
+
+## 🌐 Production Deployment Guide (Render)
+
+Deploying the FastAPI backend to [Render](https://render.com):
+
+### 1. Create a Web Service on Render
+1. Connect your GitHub repository `https://github.com/safal11goyal/Duolingo`.
+2. Configure service settings:
+   - **Environment**: `Python 3`
+   - **Root Directory**: `backend`
+   - **Build Command**:
+     ```bash
+     pip install -r requirements.txt && alembic upgrade head && python -m app.seed
+     ```
+   - **Start Command**:
+     ```bash
+     uvicorn app.main:app --host 0.0.0.0 --port $PORT
+     ```
+
+### 2. Environment Variables on Render
+Add the following in Render's **Environment** tab:
+- `DATABASE_URL`: Your Supabase PostgreSQL connection string (Transaction Pooler or direct URI).
+- `SECRET_KEY`: A secure 32+ character random string for signing JWT tokens.
+- `FRONTEND_URL`: The URL of your deployed frontend (e.g. `https://duolingo-frontend.vercel.app`).
+- `PYTHON_VERSION`: `3.11.0` or higher.
 
 ---
 
@@ -387,41 +481,20 @@ The backend test suite covers:
    - Rejection of unauthenticated requests (`401 Unauthorized`)
    - User registration and login flow with password hashing and JWT token issuance
    - Verification that User A's XP, hearts, streak, and skill completions are 100% isolated from User B
-   - Verification that User B cannot answer or complete User A's lesson attempt (`403 Forbidden`)
-   - Verification that User B cannot access locked lessons by manipulating URLs (`403 Forbidden`)
-2. **Core Services (`test_services.py`)**:
-   - Answer validation & text normalization (casing, whitespace, accent tolerance)
-   - Heart deduction, non-negative limits, and zero-heart blocking
-   - XP awarding and duplicate submission protection
-   - Consecutive daily streak incrementing, maintenance, and reset logic
-   - Skill unlocking and crown progression
+   - Cross-user attempt tampering protection (`403 Forbidden`)
+2. **PostgreSQL Migration Endpoints (`test_postgres_migration.py`)**:
+   - Registration, login, and `/me` profile retrieval
+   - `/courses`, `/lessons`, `/questions` listing with options
+   - `/progress` returns attempts, XP, and streak
+   - `/answers` tracks user-submitted answers and correctness
+3. **Core Services (`test_services.py`)**:
+   - Answer normalization & validation
+   - Heart deduction and non-negative boundaries
+   - Streak calculation across calendar days
 
-Run tests with `pytest`:
+Run all tests:
 ```bash
 cd backend
 .\venv\Scripts\pytest -v
 ```
 
----
-
-## 💡 Design Decisions & Interview Guide
-
-### 1. Why SQLite?
-SQLite provides a zero-setup, serverless, self-contained SQL database stored in a single file (`duolingo.db`). It eliminates external database dependencies for evaluators while providing full ACID compliance, unique constraints, and foreign key relations.
-
-### 2. Why SQLAlchemy?
-SQLAlchemy 2.0 provides an enterprise ORM with strong relationship mapping, typed queries, and clear separation of database schemas. It allows seamless migration to PostgreSQL or MySQL simply by changing the connection string without rewriting business logic.
-
-### 3. Why JWT & HTTP-Only Cookies?
-The application implements hybrid token delivery:
-- An **HTTP-only cookie** protects against XSS attacks in browser environments.
-- A **Bearer Authorization header** is supported for standard REST clients and headless tests.
-- Tokens encode `{"sub": "<user_id>", "exp": ...}` so the server validates authenticity without extra session lookups.
-
-### 4. How Cross-User Tampering is Prevented
-Every `LessonAttempt` row stores `user_id`. When submitting an exercise answer or finishing a lesson, the backend checks:
-```python
-if attempt.user_id != user.id:
-    raise HTTPException(status_code=403, detail="Forbidden: You cannot modify another user's lesson attempt.")
-```
-Users cannot forge or hijack other users' in-progress lessons.

@@ -1,6 +1,10 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey
+from datetime import datetime, timezone
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from ..database import Base
+
+def utcnow():
+    return datetime.now(timezone.utc)
 
 class Course(Base):
     __tablename__ = "courses"
@@ -9,8 +13,12 @@ class Course(Base):
     name = Column(String(100), nullable=False)
     source_language = Column(String(50), nullable=False, default="English")
     target_language = Column(String(50), nullable=False, default="Spanish")
+    description = Column(Text, nullable=True, default="Comprehensive Spanish course for English speakers.")
+    difficulty = Column(String(50), nullable=True, default="Beginner")
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
     units = relationship("Unit", back_populates="course", cascade="all, delete-orphan", order_by="Unit.order_index")
+    lessons = relationship("Lesson", back_populates="course", foreign_keys="[Lesson.course_id]")
 
 
 class Unit(Base):
@@ -46,11 +54,14 @@ class Lesson(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     skill_id = Column(Integer, ForeignKey("skills.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=True)
     title = Column(String(150), nullable=False)
+    description = Column(Text, nullable=True)
     order_index = Column(Integer, nullable=False, default=1)
     xp_reward = Column(Integer, nullable=False, default=10)
 
     skill = relationship("Skill", back_populates="lessons")
+    course = relationship("Course", back_populates="lessons", foreign_keys=[course_id])
     exercises = relationship("Exercise", back_populates="lesson", cascade="all, delete-orphan", order_by="Exercise.order_index")
     attempts = relationship("LessonAttempt", back_populates="lesson", cascade="all, delete-orphan")
 

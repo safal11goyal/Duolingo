@@ -29,3 +29,4 @@ class User(Base):
     lesson_attempts = relationship("LessonAttempt", back_populates="user", cascade="all, delete-orphan")
     daily_activities = relationship("DailyActivity", back_populates="user", cascade="all, delete-orphan")
     user_achievements = relationship("UserAchievement", back_populates="user", cascade="all, delete-orphan")
+    answers = relationship("UserAnswer", back_populates="user", cascade="all, delete-orphan")

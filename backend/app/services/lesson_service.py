@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from ..models import User, Lesson, Exercise, ExerciseOption, LessonAttempt, UserSkillProgress, Skill
+from ..models import User, Lesson, Exercise, ExerciseOption, LessonAttempt, UserSkillProgress, Skill, UserAnswer
 from .streak_service import record_activity_and_update_streak
 from .achievement_service import check_and_unlock_achievements
 from .progress_service import unlock_next_skill
@@ -43,15 +43,23 @@ def start_lesson_attempt(user: User, lesson_id: int, db: Session) -> dict:
     if progress and progress.status == "locked":
         raise HTTPException(status_code=403, detail="Skill is locked. Complete previous skills first.")
 
+    prior_attempts = db.query(LessonAttempt).filter(
+        LessonAttempt.user_id == user.id,
+        LessonAttempt.lesson_id == lesson_id
+    ).count()
+
+    now = datetime.now(timezone.utc)
     attempt = LessonAttempt(
         user_id=user.id,
         lesson_id=lesson_id,
-        started_at=datetime.now(timezone.utc),
+        started_at=now,
+        last_attempted_at=now,
         score=0,
         correct_answers=0,
         wrong_answers=0,
         xp_earned=0,
         hearts_lost=0,
+        attempts=prior_attempts + 1,
         completed=False
     )
     db.add(attempt)
@@ -175,6 +183,19 @@ def submit_exercise_answer(user: User, lesson_id: int, exercise_id: int, answer:
             else:
                 attempt.wrong_answers += 1
                 attempt.hearts_lost += 1
+            attempt.last_attempted_at = datetime.now(timezone.utc)
+
+    # Persist user answer history
+    user_answer_record = UserAnswer(
+        user_id=user.id,
+        question_id=exercise.id,
+        lesson_id=lesson_id,
+        attempt_id=attempt_id,
+        submitted_answer=str(answer)[:500],
+        is_correct=is_correct,
+        timestamp=datetime.now(timezone.utc)
+    )
+    db.add(user_answer_record)
 
     user.last_active_at = datetime.now(timezone.utc)
     user.updated_at = datetime.now(timezone.utc)

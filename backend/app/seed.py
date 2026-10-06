@@ -8,73 +8,73 @@ from .models import (
 )
 
 def seed_database():
-    print("Recreating database tables with updated authentication schema...")
-    Base.metadata.drop_all(bind=engine)
+    print("Ensuring database tables exist...")
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
     try:
+        created_achievements = db.query(Achievement).all()
+        if not created_achievements:
+            print("Seeding achievements...")
+            achievements_data = [
+                {
+                    "name": "First Step",
+                    "description": "Complete your very first lesson",
+                    "icon": "zap",
+                    "requirement_type": "first_lesson",
+                    "requirement_value": 1
+                },
+                {
+                    "name": "Wildfire",
+                    "description": "Reach a 3-day learning streak",
+                    "icon": "flame",
+                    "requirement_type": "streak",
+                    "requirement_value": 3
+                },
+                {
+                    "name": "Sage",
+                    "description": "Reach a 7-day learning streak",
+                    "icon": "calendar",
+                    "requirement_type": "streak",
+                    "requirement_value": 7
+                },
+                {
+                    "name": "Scholar",
+                    "description": "Earn 100 total XP",
+                    "icon": "book-open",
+                    "requirement_type": "xp",
+                    "requirement_value": 100
+                },
+                {
+                    "name": "Legend",
+                    "description": "Earn 500 total XP",
+                    "icon": "award",
+                    "requirement_type": "xp",
+                    "requirement_value": 500
+                },
+                {
+                    "name": "Sharpshooter",
+                    "description": "Finish a lesson with 100% accuracy without losing any hearts",
+                    "icon": "target",
+                    "requirement_type": "perfect_lesson",
+                    "requirement_value": 1
+                },
+                {
+                    "name": "Crown Collector",
+                    "description": "Earn 3 crowns across your skills",
+                    "icon": "crown",
+                    "requirement_type": "crowns",
+                    "requirement_value": 3
+                }
+            ]
+            created_achievements = []
+            for ach in achievements_data:
+                a = Achievement(**ach)
+                db.add(a)
+                created_achievements.append(a)
+            db.commit()
 
-        print("Seeding achievements...")
-        achievements_data = [
-            {
-                "name": "First Step",
-                "description": "Complete your very first lesson",
-                "icon": "zap",
-                "requirement_type": "first_lesson",
-                "requirement_value": 1
-            },
-            {
-                "name": "Wildfire",
-                "description": "Reach a 3-day learning streak",
-                "icon": "flame",
-                "requirement_type": "streak",
-                "requirement_value": 3
-            },
-            {
-                "name": "Sage",
-                "description": "Reach a 7-day learning streak",
-                "icon": "calendar",
-                "requirement_type": "streak",
-                "requirement_value": 7
-            },
-            {
-                "name": "Scholar",
-                "description": "Earn 100 total XP",
-                "icon": "book-open",
-                "requirement_type": "xp",
-                "requirement_value": 100
-            },
-            {
-                "name": "Legend",
-                "description": "Earn 500 total XP",
-                "icon": "award",
-                "requirement_type": "xp",
-                "requirement_value": 500
-            },
-            {
-                "name": "Sharpshooter",
-                "description": "Finish a lesson with 100% accuracy without losing any hearts",
-                "icon": "target",
-                "requirement_type": "perfect_lesson",
-                "requirement_value": 1
-            },
-            {
-                "name": "Crown Collector",
-                "description": "Earn 3 crowns across your skills",
-                "icon": "crown",
-                "requirement_type": "crowns",
-                "requirement_value": 3
-            }
-        ]
-        created_achievements = []
-        for ach in achievements_data:
-            a = Achievement(**ach)
-            db.add(a)
-            created_achievements.append(a)
-        db.commit()
-
-        print("Seeding default learner & leaderboard users...")
+        print("Checking default learner & leaderboard users...")
         default_pwd_hash = hash_password("Demo123!")
         users_data = [
             {"username": "sofia_r", "email": "sofia@example.com", "display_name": "Sofia Ramos", "avatar": "/avatars/sofia.png", "xp": 1820, "gems": 1200, "hearts": 5, "streak": 14},
@@ -86,60 +86,71 @@ def seed_database():
             {"username": "chloe_d", "email": "chloe@example.com", "display_name": "Chloe Dupont", "avatar": "/avatars/chloe.png", "xp": 290, "gems": 200, "hearts": 2, "streak": 1},
         ]
         for u in users_data:
-            db.add(User(
-                username=u["username"],
-                email=u["email"],
-                password_hash=default_pwd_hash,
-                display_name=u["display_name"],
-                avatar=u["avatar"],
-                xp=u["xp"],
-                gems=u["gems"],
-                hearts=u["hearts"],
-                streak=u["streak"],
-                daily_goal=20,
-                last_active_at=datetime.now(timezone.utc),
-                created_at=datetime.now(timezone.utc) - timedelta(days=20),
-                updated_at=datetime.now(timezone.utc)
-            ))
+            if not db.query(User).filter(User.username == u["username"]).first():
+                db.add(User(
+                    username=u["username"],
+                    email=u["email"],
+                    password_hash=default_pwd_hash,
+                    display_name=u["display_name"],
+                    avatar=u["avatar"],
+                    xp=u["xp"],
+                    gems=u["gems"],
+                    hearts=u["hearts"],
+                    streak=u["streak"],
+                    daily_goal=20,
+                    last_active_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(timezone.utc) - timedelta(days=20),
+                    updated_at=datetime.now(timezone.utc)
+                ))
+        db.commit()
 
         # Main demo learner Alex
-        alex = User(
-            username="alex",
-            email="demo@example.com",
-            password_hash=default_pwd_hash,
-            display_name="Alex Rivera",
-            avatar="/avatars/alex.png",
-            xp=150,
-            gems=500,
-            hearts=5,
-            streak=3,
-            daily_goal=20,
-            last_active_at=datetime.now(timezone.utc),
-            created_at=datetime.now(timezone.utc) - timedelta(days=10),
-            updated_at=datetime.now(timezone.utc)
-        )
-        db.add(alex)
-        db.commit()
-        db.refresh(alex)
+        alex = db.query(User).filter(User.username == "alex").first()
+        if not alex:
+            alex = User(
+                username="alex",
+                email="demo@example.com",
+                password_hash=default_pwd_hash,
+                display_name="Alex Rivera",
+                avatar="/avatars/alex.png",
+                xp=150,
+                gems=500,
+                hearts=5,
+                streak=3,
+                daily_goal=20,
+                last_active_at=datetime.now(timezone.utc),
+                created_at=datetime.now(timezone.utc) - timedelta(days=10),
+                updated_at=datetime.now(timezone.utc)
+            )
+            db.add(alex)
+            db.commit()
+            db.refresh(alex)
 
-        # Seed recent activity for Alex to support 3-day streak
-        today = date.today()
-        for i in range(3):
-            act_date = today - timedelta(days=(2 - i))
-            db.add(DailyActivity(
-                user_id=alex.id,
-                activity_date=act_date,
-                xp_earned=25,
-                lessons_completed=2
-            ))
-        db.commit()
+            # Seed recent activity for Alex to support 3-day streak
+            today = date.today()
+            for i in range(3):
+                act_date = today - timedelta(days=(2 - i))
+                db.add(DailyActivity(
+                    user_id=alex.id,
+                    activity_date=act_date,
+                    xp_earned=25,
+                    lessons_completed=2
+                ))
+            db.commit()
 
-        # Seed course
+        # Seed course if not present
+        course = db.query(Course).filter(Course.name == "Spanish").first()
+        if course:
+            print("Spanish course already exists. Database content is ready!")
+            return
+
         print("Seeding Spanish course, units, skills, lessons, and exercises...")
         course = Course(
             name="Spanish",
             source_language="English",
-            target_language="Spanish"
+            target_language="Spanish",
+            description="Comprehensive Spanish course for English speakers.",
+            difficulty="Beginner"
         )
         db.add(course)
         db.commit()
@@ -1087,7 +1098,9 @@ def seed_database():
                 for l_data in s_data["lessons"]:
                     lesson = Lesson(
                         skill_id=skill.id,
+                        course_id=course.id,
                         title=l_data["title"],
+                        description=l_data.get("description", l_data["title"]),
                         order_index=l_data["order_index"],
                         xp_reward=10
                     )
